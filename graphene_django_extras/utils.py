@@ -336,3 +336,14 @@ def parse_validation_exc(validation_exc):
             errors_list.append({"field": key, "messages": exc.messages})
 
     return errors_list
+
+
+def get_kwarg_processors(args):
+    keys = args.keys()
+    kwarg_processors = {}
+    for key in keys:
+        value = args[key]
+        if isinstance(value, (list, tuple)):
+            kwarg_processors[key] = value[1]
+            args[key] = value[0]
+    return kwarg_processors

@@ -11,7 +11,7 @@ from graphene_django_extras.settings import graphql_api_settings
 from graphene_django_extras.filters.filter import get_filterset_class
 from .base_types import DjangoListObjectBase
 from .paginations.pagination import BaseDjangoGraphqlPagination
-from .utils import get_extra_filters, queryset_factory, get_related_fields, find_field
+from .utils import get_extra_filters, queryset_factory, get_related_fields, find_field, get_kwarg_processors
 
 
 # *********************************************** #
@@ -217,16 +217,6 @@ class DjangoFilterPaginateListField(Field):
             self.filtering_args
         )
 
-
-def get_kwarg_processors(args):
-    keys = args.keys()
-    kwarg_processors = {}
-    for key in keys:
-        value = args[key]
-        if isinstance(value, (list, tuple)):
-            kwarg_processors[key] = value[1]
-            args[key] = value[0]
-    return kwarg_processors
 
 class DjangoListObjectField(Field):
 
