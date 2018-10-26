@@ -49,9 +49,9 @@ class DjangoObjectField(Field):
 class DjangoFilterListField(Field):
 
     def __init__(self, _type, fields=None, extra_filter_meta=None,
-                 filterset_class=None, post_process=None, *args, **kwargs):
+                 filterset_class=None, *args, **kwargs):
 
-        self.post_process = post_process
+        self.kwarg_processors = get_kwarg_processors(kwargs.get('args', {}))
         if DJANGO_FILTER_INSTALLED:
             _fields = _type._meta.filter_fields
             _model = _type._meta.model
@@ -90,7 +90,7 @@ class DjangoFilterListField(Field):
     def list_resolver(manager, filterset_class, filtering_args, root, info, **kwargs):
         qs = None
         field = None
-        post_process = kwargs.pop('post_process', None)
+        kwarg_processors = kwargs.pop('kwarg_processors', None)
 
         if root and is_valid_django_model(root._meta.model):
             available_related_fields = get_related_fields(root._meta.model)
@@ -119,8 +119,9 @@ class DjangoFilterListField(Field):
         if qs is None:
             qs = queryset_factory(manager, info.field_asts, info.fragments, **kwargs)
             qs = filterset_class(data=filter_kwargs, queryset=qs).qs
-            if post_process:
-                post_process(qs, **kwargs)
+            for key in kwargs:
+                if key in kwarg_processors:
+                    qs = kwarg_processors[key](qs, kwargs[key])
 
             if root and is_valid_django_model(root._meta.model):
                 extra_filters = get_extra_filters(root, manager.model)
@@ -137,18 +138,18 @@ class DjangoFilterListField(Field):
             temp._meta.model._default_manager,
             self.filterset_class,
             self.filtering_args,
-            post_process=self.post_process
+            kwarg_processors=self.kwarg_processors
         )
 
 
 class DjangoFilterPaginateListField(Field):
 
     def __init__(self, _type, pagination=None, fields=None, extra_filter_meta=None,
-                 filterset_class=None, post_process=None, *args, **kwargs):
+                 filterset_class=None, *args, **kwargs):
 
         _fields = _type._meta.filter_fields
         _model = _type._meta.model
-        self.post_process = post_process
+        self.kwarg_processors = get_kwarg_processors(kwargs.get('args', {}))
 
         self.fields = fields or _fields
         meta = dict(model=_model, fields=self.fields)
@@ -192,8 +193,9 @@ class DjangoFilterPaginateListField(Field):
         filter_kwargs = {k: v for k, v in kwargs.items() if k in filtering_args}
         qs = queryset_factory(manager, info.field_asts, info.fragments, **kwargs)
         qs = filterset_class(data=filter_kwargs, queryset=qs, request=info.context).qs
-        if self.post_process:
-            qs = self.post_process(qs, **kwargs)
+        for key in kwargs:
+            if key in self.kwarg_processors:
+                qs = self.kwarg_processors[key](qs, kwargs[key])
 
         if root and is_valid_django_model(root._meta.model):
             extra_filters = get_extra_filters(root, manager.model)
@@ -216,10 +218,22 @@ class DjangoFilterPaginateListField(Field):
         )
 
 
+def get_kwarg_processors(args):
+    keys = args.keys()
+    kwarg_processors = {}
+    for key in keys:
+        value = args[key]
+        if isinstance(value, (list, tuple)):
+            kwarg_processors[key] = value[1]
+            args[key] = value[0]
+    return kwarg_processors
+
 class DjangoListObjectField(Field):
 
-    def __init__(self, _type, fields=None, extra_filter_meta=None, filterset_class=None, post_process=None, *args, **kwargs):
-        self.post_process = post_process
+    def __init__(self, _type, fields=None, extra_filter_meta=None, filterset_class=None, *args, **kwargs):
+
+        self.kwarg_processors = get_kwarg_processors(kwargs.get('args', {}))
+
         if DJANGO_FILTER_INSTALLED:
             _fields = _type._meta.filter_fields
             _model = _type._meta.model
@@ -257,8 +271,9 @@ class DjangoListObjectField(Field):
         filter_kwargs = {k: v for k, v in kwargs.items() if k in filtering_args}
 
         qs = filterset_class(data=filter_kwargs, queryset=qs, request=info.context).qs
-        if self.post_process:
-            qs = self.post_process(qs, **kwargs)
+        for key in kwargs:
+            if key in self.kwarg_processors:
+                qs = self.kwarg_processors[key](qs, kwargs[key])
         count = qs.count()
 
         return DjangoListObjectBase(
