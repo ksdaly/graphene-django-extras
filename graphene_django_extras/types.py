@@ -311,7 +311,7 @@ class DjangoSerializerType(ObjectType):
     def __init_subclass_with_meta__(cls, serializer_class=None, queryset=None, only_fields=(), exclude_fields=(),
                                     pagination=None, input_field_name=None, output_field_name=None,
                                     results_field_name=None, nested_fields=False, filter_fields=None, description='',
-                                    filterset_class=None, **options):
+                                    filterset_class=None, interfaces=(), **options):
 
         if not serializer_class:
             raise Exception('serializer_class is required on all ModelSerializerType')
@@ -350,6 +350,7 @@ class DjangoSerializerType(ObjectType):
             'skip_registry': False,
             'filterset_class': filterset_class,
             'results_field_name': results_field_name,
+            'interfaces': interfaces,
         }
 
         output_type = registry.get_type_for_model(model)
@@ -393,7 +394,7 @@ class DjangoSerializerType(ObjectType):
         _meta.input_field_name = input_field_name
         _meta.output_field_name = output_field_name
 
-        super(DjangoSerializerType, cls).__init_subclass_with_meta__(_meta=_meta, description=description, **options)
+        super(DjangoSerializerType, cls).__init_subclass_with_meta__(_meta=_meta, description=description, interfaces=interfaces, **options)
 
     @classmethod
     def list_object_type(cls):
