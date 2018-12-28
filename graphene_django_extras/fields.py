@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import operator
+import re
+import six
 from functools import partial
 
-from graphene import Field, List, ID, Argument
+from graphene import Field, List, ID, Int, Argument
 from graphene.types.structures import Structure
-from graphene_django.filter.utils import get_filtering_args_from_filterset
+from graphene_django.forms.converter import convert_form_field
 from graphene_django.utils import maybe_queryset, is_valid_django_model, DJANGO_FILTER_INSTALLED
 from graphene_django_extras.settings import graphql_api_settings
 
@@ -13,6 +15,29 @@ from .base_types import DjangoListObjectBase
 from .paginations.pagination import BaseDjangoGraphqlPagination
 from .utils import get_extra_filters, queryset_factory, get_related_fields, find_field, get_kwarg_processors
 
+DECIMAL_FIELD_NAMES = {'DecimalField', 'DecimalInField'}
+ID_FIELD_PATTERN = r'(^id$|^id_|.*_id_.*|.*_id$)'
+
+def get_filtering_args_from_filterset(filterset_class, type):
+    """ Inspect a FilterSet and produce the arguments to pass to
+        a Graphene Field. These arguments will be available to
+        filter against in the GraphQL
+    """
+    args = {}
+    for name, filter_field in six.iteritems(filterset_class.base_filters):
+        # Avoid converting an ID field to a Float
+        if filter_field.field_class.__name__ in DECIMAL_FIELD_NAMES and re.match(
+                ID_FIELD_PATTERN, name, re.IGNORECASE):
+            field_type = Int(
+                description=filter_field.field.help_text,
+                required=filter_field.field.required
+            ).Argument()
+        else:
+            field_type = convert_form_field(filter_field.field).Argument()
+        field_type.description = filter_field.label
+        args[name] = field_type
+
+    return args
 
 # *********************************************** #
 # *********** FIELD FOR SINGLE OBJECT *********** #
