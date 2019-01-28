@@ -32,7 +32,7 @@ def factory_type(operation, _type, *args, **kwargs):
                 registry = kwargs.get('registry')
                 skip_registry = kwargs.get('skip_registry')
                 description = 'Auto generated Type for {} model'.format(kwargs.get('model')._meta.verbose_name)
-                interfaces = kwargs.get('interfaces')
+                interfaces = kwargs.get('interfaces', ())
 
         return GenericType
 
